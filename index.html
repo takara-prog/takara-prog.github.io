@@ -62,13 +62,13 @@
   <div id="alarm-status">アラーム未設定</div>
 </div>
 <div class="card">
-  <div class="card-label">今日のTODO</div>
+  <div class="card-label">今日のタスク</div>
   <div class="todo-input-row">
     <input type="text" id="todo-input" placeholder="タスクを追加..." onkeydown="if(event.key==='Enter')addTodo()">
     <button class="btn btn-dark" onclick="addTodo()">追加</button>
   </div>
   <ul id="todo-list"></ul>
-  <button class="btn btn-ghost" id="read-btn" onclick="readTodos()">🔊 TODOを読み上げる</button>
+  <button class="btn btn-ghost" id="read-btn" onclick="readTodos()">🔊 タスクを読み上げる</button>
 </div>
 <div id="ring-overlay">
   <div id="ring-label">おはようございます</div>
@@ -111,13 +111,14 @@
     alarmActive=false;
     document.getElementById('ring-overlay').classList.add('show');
     document.getElementById('ring-time').textContent=document.getElementById('alarm-time').value;
-    startBeep();setTimeout(()=>readTodos(),3000);
+    startBeep();
   }
   function stopAlarm(){
     document.getElementById('ring-overlay').classList.remove('show');
     stopBeep();
     const s=document.getElementById('alarm-status');
     s.textContent='アラーム未設定';s.className='';
+    setTimeout(()=>readTodos(),800);
   }
   function startBeep(){
     audioCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -155,8 +156,8 @@
     if(!('speechSynthesis' in window)){alert('このブラウザは読み上げ非対応です');return;}
     window.speechSynthesis.cancel();
     const p=todos.filter(t=>!t.done);
-    if(p.length===0){speak('今日のTODOはすべて完了しています。');return;}
-    speak(`今日のTODOは${p.length}件あります。`);
+    if(p.length===0){speak('今日のタスクはすべて完了しています。');return;}
+    speak(`今日のタスクは${p.length}件あります。`);
     p.forEach((t,i)=>setTimeout(()=>speak(`${i+1}つめ、${t.text}`),(i+1)*1400));
   }
   function speak(text){
