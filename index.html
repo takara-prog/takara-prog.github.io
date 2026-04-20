@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morning</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg: #f5f4f0; --surface: #ffffff; --text: #1a1a1a; --muted: #999; --accent: #2d2d2d; --line: #e8e8e4; --red: #c0392b; --green: #27ae60; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; gap: 32px; }
+  #clock-section { text-align: center; padding: 40px 0 24px; }
+  #clock { font-family: 'DM Mono', monospace; font-size: clamp(56px, 16vw, 96px); font-weight: 300; letter-spacing: -2px; line-height: 1; color: var(--text); }
+  #date { font-size: 13px; color: var(--muted); margin-top: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .card { width: 100%; max-width: 420px; background: var(--surface); border-radius: 16px; padding: 24px; border: 1px solid var(--line); }
+  .card-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .alarm-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  #alarm-time { font-family: 'DM Mono', monospace; font-size: 15px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--bg); color: var(--text); flex: 1; outline: none; }
+  #alarm-time:focus { border-color: var(--accent); }
+  .btn { padding: 10px 18px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.75; }
+  .btn-dark { background: var(--accent); color: #fff; }
+  .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  #alarm-status { font-size: 13px; color: var(--muted); min-height: 18px; }
+  #alarm-status.active { color: var(--green); }
+  #alarm-status.ringing { color: var(--red); font-weight: 500; }
+  .todo-input-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  #todo-input { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--bg); color: var(--text); outline: none; }
+  #todo-input:focus { border-color: var(--accent); }
+  #todo-input::placeholder { color: var(--muted); }
+  #todo-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .todo-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid transparent; transition: border-color 0.15s; }
+  .todo-item:hover { border-color: var(--line); }
+  .todo-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--muted); background: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .todo-check.done { background: var(--accent); border-color: var(--accent); }
+  .todo-check.done::after { content: '✓'; color: #fff; font-size: 10px; }
+  .todo-text { flex: 1; font-size: 14px; line-height: 1.4; transition: opacity 0.15s; }
+  .todo-text.done { text-decoration: line-through; opacity: 0.4; }
+  .todo-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; opacity: 0; transition: opacity 0.15s; }
+  .todo-item:hover .todo-del { opacity: 1; }
+  #read-btn { width: 100%; margin-top: 12px; padding: 11px; font-size: 13px; }
+  #ring-overlay { display: none; position: fixed; inset: 0; background: rgba(26,26,26,0.85); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 24px; }
+  #ring-overlay.show { display: flex; }
+  #ring-time { font-family: 'DM Mono', monospace; font-size: 72px; color: #fff; font-weight: 300; animation: pulse 1s ease-in-out infinite; }
+  #ring-label { color: rgba(255,255,255,0.6); font-size: 14px; letter-spacing: 0.05em; }
+  #stop-btn { margin-top: 8px; padding: 14px 40px; border-radius: 50px; background: #fff; color: var(--text); font-size: 15px; font-weight: 500; border: none; cursor: pointer; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+</style>
+</head>
+<body>
+<section id="clock-section">
+  <div id="clock">00:00:00</div>
+  <div id="date"></div>
+</section>
+<div class="card">
+  <div class="card-label">アラーム</div>
+  <div class="alarm-row">
+    <input type="time" id="alarm-time">
+    <button class="btn btn-dark" onclick="setAlarm()">セット</button>
+    <button class="btn btn-ghost" onclick="clearAlarm()">解除</button>
+  </div>
+  <div id="alarm-status">アラーム未設定</div>
+</div>
+<div class="card">
+  <div class="card-label">今日のTODO</div>
+  <div class="todo-input-row">
+    <input type="text" id="todo-input" placeholder="タスクを追加..." onkeydown="if(event.key==='Enter')addTodo()">
+    <button class="btn btn-dark" onclick="addTodo()">追加</button>
+  </div>
+  <ul id="todo-list"></ul>
+  <button class="btn btn-ghost" id="read-btn" onclick="readTodos()">🔊 TODOを読み上げる</button>
+</div>
+<div id="ring-overlay">
+  <div id="ring-label">おはようございます</div>
+  <div id="ring-time"></div>
+  <button id="stop-btn" onclick="stopAlarm()">止める</button>
+</div>
+<script>
+  let alarmTime=null,alarmActive=false,alarmInterval=null,audioCtx=null;
+  let todos=JSON.parse(localStorage.getItem('morning-todos')||'[]');
+  const DAYS=['日','月','火','水','木','金','土'];
+  function updateClock(){
+    const n=new Date();
+    const hh=String(n.getHours()).padStart(2,'0');
+    const mm=String(n.getMinutes()).padStart(2,'0');
+    const ss=String(n.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent=`${hh}:${mm}:${ss}`;
+    document.getElementById('date').textContent=`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${DAYS[n.getDay()]}）`;
+    checkAlarm(n);
+  }
+  setInterval(updateClock,1000);updateClock();
+  function setAlarm(){
+    const v=document.getElementById('alarm-time').value;
+    if(!v)return;
+    alarmTime=v;alarmActive=true;
+    const s=document.getElementById('alarm-status');
+    s.textContent=`⏰ ${v} にアラームをセット`;s.className='active';
+  }
+  function clearAlarm(){
+    alarmTime=null;alarmActive=false;
+    const s=document.getElementById('alarm-status');
+    s.textContent='アラーム未設定';s.className='';
+    stopAlarm();
+  }
+  function checkAlarm(n){
+    if(!alarmActive||!alarmTime)return;
+    const cur=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+    if(cur===alarmTime&&n.getSeconds()===0)triggerAlarm();
+  }
+  function triggerAlarm(){
+    alarmActive=false;
+    document.getElementById('ring-overlay').classList.add('show');
+    document.getElementById('ring-time').textContent=document.getElementById('alarm-time').value;
+    startBeep();setTimeout(()=>readTodos(),3000);
+  }
+  function stopAlarm(){
+    document.getElementById('ring-overlay').classList.remove('show');
+    stopBeep();
+    const s=document.getElementById('alarm-status');
+    s.textContent='アラーム未設定';s.className='';
+  }
+  function startBeep(){
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    function beep(){
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);
+      o.frequency.value=880;o.type='sine';
+      g.gain.setValueAtTime(0.4,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+      o.start();o.stop(audioCtx.currentTime+0.4);
+    }
+    beep();alarmInterval=setInterval(beep,800);
+  }
+  function stopBeep(){
+    if(alarmInterval){clearInterval(alarmInterval);alarmInterval=null;}
+    if(audioCtx){audioCtx.close();audioCtx=null;}
+  }
+  function saveTodos(){localStorage.setItem('morning-todos',JSON.stringify(todos));}
+  function renderTodos(){
+    const ul=document.getElementById('todo-list');ul.innerHTML='';
+    todos.forEach((t,i)=>{
+      const li=document.createElement('li');li.className='todo-item';
+      li.innerHTML=`<div class="todo-check ${t.done?'done':''}" onclick="toggleTodo(${i})"></div><span class="todo-text ${t.done?'done':''}">${t.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><button class="todo-del" onclick="deleteTodo(${i})">×</button>`;
+      ul.appendChild(li);
+    });
+  }
+  function addTodo(){
+    const inp=document.getElementById('todo-input');
+    const text=inp.value.trim();if(!text)return;
+    todos.push({text,done:false});inp.value='';saveTodos();renderTodos();
+  }
+  function toggleTodo(i){todos[i].done=!todos[i].done;saveTodos();renderTodos();}
+  function deleteTodo(i){todos.splice(i,1);saveTodos();renderTodos();}
+  function readTodos(){
+    if(!('speechSynthesis' in window)){alert('このブラウザは読み上げ非対応です');return;}
+    window.speechSynthesis.cancel();
+    const p=todos.filter(t=>!t.done);
+    if(p.length===0){speak('今日のTODOはすべて完了しています。');return;}
+    speak(`今日のTODOは${p.length}件あります。`);
+    p.forEach((t,i)=>setTimeout(()=>speak(`${i+1}つめ、${t.text}`),(i+1)*1400));
+  }
+  function speak(text){
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ja-JP';u.rate=0.95;u.pitch=1;
+    window.speechSynthesis.speak(u);
+  }
+  renderTodos();
+</script>
+</body>
+</html>
